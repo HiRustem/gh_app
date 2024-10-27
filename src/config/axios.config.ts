@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { getToken } from '@/utils/hooks/token';
 
+// Создаем экземпляр axios с базовой конфигурацией
 export const axiosConfig = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_URL,
   timeout: 25000,
@@ -9,22 +10,27 @@ export const axiosConfig = axios.create({
   },
 });
 
-const responseBody = <T>(response: AxiosResponse<{ data: T }>) => response.data.data;
+// Упрощенная функция для обработки ответа
+const responseBody = <T>(response: AxiosResponse<{ data: T }>): T => response.data.data;
 
-// Использовать для клиентских запросов с помощью tanstack-query
-
+// Универсальная API-конфигурация
 export const api = {
-  get: <T, TParams = undefined | any>(url: string, queryParams?: TParams) =>
+  get: async <T, TParams = undefined>(url: string, queryParams?: TParams): Promise<T> =>
     axiosConfig.get<{ data: T }>(url, { params: queryParams }).then(responseBody),
-  post: <T>(
+
+  post: async <T, TData extends Record<string, unknown> = {}>(
     url: string,
-    body?: Record<string, any>,
-    config?: AxiosRequestConfig<any> | undefined,
-  ) => axiosConfig.post<{ data: T }>(url, body, config).then(responseBody),
-  put: <T>(url: string, body?: Record<string, any>) =>
-    axiosConfig.put<{ data: T }>(url, body).then(responseBody),
-  delete: <T>(url: string, body?: Record<string, any>) =>
-    axiosConfig.delete<{ data: T }>(url, body).then(responseBody),
+    body?: TData,
+    config?: AxiosRequestConfig,
+  ): Promise<T> => axiosConfig.post<{ data: T }>(url, body, config).then(responseBody),
+
+  put: async <T, TData extends Record<string, unknown> = {}>(
+    url: string,
+    body?: TData,
+  ): Promise<T> => axiosConfig.put<{ data: T }>(url, body).then(responseBody),
+
+  delete: async <T>(url: string): Promise<T> =>
+    axiosConfig.delete<{ data: T }>(url).then(responseBody),
 };
 
 axiosConfig.interceptors.request.use(
@@ -32,7 +38,7 @@ axiosConfig.interceptors.request.use(
     const tokens = getToken();
 
     if (tokens?.access_token) {
-      config.headers['Authorization'] = `Bearer ${tokens?.access_token}`;
+      config.headers['Authorization'] = `Bearer ${tokens.access_token}`;
     }
 
     return config;
